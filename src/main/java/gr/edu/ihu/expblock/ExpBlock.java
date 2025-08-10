@@ -170,8 +170,8 @@ public class ExpBlock {
         long startTime = System.currentTimeMillis();
         long startTimeCycle = System.currentTimeMillis();
         try {
-            CSVReader readerA = new CSVReader(new FileReader("c:\\data\\test_voters_A.txt"));
-            CSVReader readerB = new CSVReader(new FileReader("c:\\data\\test_voters_B.txt"));
+            CSVReader readerA = new CSVReader(new FileReader("C:\\Users\\jose.filho.ext\\Documents\\ExpBlockSemanthic\\target\\test_voters_A.txt"));
+            CSVReader readerB = new CSVReader(new FileReader("C:\\Users\\jose.filho.ext\\Documents\\ExpBlockSemanthic\\target\\test_voters_B.txt"));
 
             String[] lineInArray1;
             String[] lineInArray2;
