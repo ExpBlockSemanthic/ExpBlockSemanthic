@@ -1,11 +1,8 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+// ExpBlock.java
 package gr.edu.ihu.expblock;
 
 import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -14,15 +11,8 @@ import java.util.SplittableRandom;
 import java.util.stream.IntStream;
 import org.apache.commons.lang3.ArrayUtils;
 
-/**
- *
- * @author Administrator
- */
 public class ExpBlock {
 
-    /**
-     * @param args the command line arguments
-     */
     public double epsilon;
     public double delta = 0.1;
     public double q;
@@ -59,29 +49,21 @@ public class ExpBlock {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
     public void put(Record rec) {
-        //System.out.println("occupied="+this.occupied);
         if (this.occupied == b) {
             int avg = this.globalRecNo / b;
-            if (avg == 0) {
-                avg = 1;
-            }
+            if (avg == 0) avg = 1;
 
             int v = 0;
-            long startTime = System.nanoTime();
-
             int j = 0;
             int i = r[j];
             while (v < (int) Math.floor((xi * b))) {
                 Block block = arr[i];
                 if (block == null) {
                     j++;
-                    if (j == this.noRandoms) {
-                        j = 0;
-                    }
+                    if (j == this.noRandoms) j = 0;
                     i = r[j];
                     continue;
                 }
@@ -93,22 +75,15 @@ public class ExpBlock {
                     block.recNo = block.recNo - avg;
                 }
                 j++;
-                if (j == this.noRandoms) {
-                    j = 0;
-                }
+                if (j == this.noRandoms) j = 0;
                 i = r[j];
             }
-
-            long stopTime = System.nanoTime();
-            long elapsedTime = stopTime - startTime;
             this.occupied = this.occupied - ((int) Math.floor((xi * b)));
-
             currentRound++;
         }
         this.globalRecNo++;
         String key = rec.getBlockingKey(minHash);
 
-        long startTime = System.nanoTime();
         boolean blockExists = false;
         int emptyPos = -1;
         for (int i = 0; i < arr.length; i++) {
@@ -140,13 +115,11 @@ public class ExpBlock {
             }
             this.matchingPairsNo = this.matchingPairsNo + mp;
         }
-        long stopTime = System.nanoTime();
-        long elapsedTime = stopTime - startTime;
     }
 
     public static Record prepare(String[] lineInArray) {
-        String name = lineInArray[2];
         String surname = lineInArray[1];
+        String name = lineInArray[2];
         String address = lineInArray[3];
         String town = lineInArray[4];
         String poBox = lineInArray[5];
@@ -157,76 +130,80 @@ public class ExpBlock {
         rec.surname = surname;
         rec.town = town;
         rec.poBox = poBox;
-        rec.origin = id.charAt(0) + "";
-        //System.out.println(id+" "+name+" "+surname+" "+town+" "+rec.origin);               
+        rec.origin = id.startsWith("a") ? "A" : "B"; 
         return rec;
     }
 
     public static void main(String[] args) {
+        // ================== INICIALIZAÇÃO ==================
+        String word2VecModelPath = "C:\\Users\\danie\\OneDrive\\Documentos\\ExpBlockSemanthic\\GoogleNews-vectors-negative300.bin";
+        SimilarityService.initialize(word2VecModelPath);
+
         ExpBlock e = new ExpBlock(0.1, 2.0 / 3, 1000);
         System.out.println("Running ExpBlock using b=" + e.b + " w=" + e.w);
         int recNoA = 0;
         int recNoB = 0;
         long startTime = System.currentTimeMillis();
-        long startTimeCycle = System.currentTimeMillis();
-        try {
-            CSVReader readerA = new CSVReader(new FileReader("C:\\Users\\jose.filho.ext\\Documents\\ExpBlockSemanthic\\target\\test_voters_A.txt"));
-            CSVReader readerB = new CSVReader(new FileReader("C:\\Users\\jose.filho.ext\\Documents\\ExpBlockSemanthic\\target\\test_voters_B.txt"));
 
-            String[] lineInArray1;
-            String[] lineInArray2;
-            int c = 0;
-            while (true) {
-                lineInArray1 = readerA.readNext();
-                if (lineInArray1 != null) {
-                    if (lineInArray1.length == 6) {
-                        String surname = lineInArray1[1];
-                        recNoA++;
-                        //System.out.println("Working on "+recNoA+" record from A.");
-                        Record rec1 = prepare(lineInArray1);
-                        e.put(rec1);
-                    }
-                }
-                lineInArray2 = readerB.readNext();
-                if (lineInArray2 != null) {
-                    //String[] lineInArray2 = readerB.readNext();
-                    if (lineInArray2.length == 6) {
-                        String surname2 = lineInArray2[1];
-                        recNoB++;
-                        //System.out.println("Working on "+recNoB+" record from B.");                                                        
-                        Record rec2 = prepare(lineInArray2);
-                        e.put(rec2);
+        String fileA = "C:\\Users\\danie\\OneDrive\\Documentos\\ExpBlockSemanthic\\target\\test_voters_A.txt";
+        String fileB = "C:\\Users\\danie\\OneDrive\\Documentos\\ExpBlockSemanthic\\target\\test_voters_B.txt";
+
+        try (CSVReader readerA = new CSVReader(new FileReader(fileA));
+             CSVReader readerB = new CSVReader(new FileReader(fileB))) {
+
+            String[] lineInArray1, lineInArray2;
+            boolean fileAHasNext = true;
+            boolean fileBHasNext = true;
+
+            while (fileAHasNext || fileBHasNext) {
+                if (fileAHasNext) {
+                    lineInArray1 = readerA.readNext();
+                    if (lineInArray1 != null) {
+                        if (lineInArray1.length >= 6) {
+                            recNoA++;
+                            Record rec1 = prepare(lineInArray1);
+                            e.put(rec1);
+                        }
+                    } else {
+                        fileAHasNext = false;
                     }
                 }
 
-                if ((recNoA + recNoB) % 100000 == 0) {
-                    long stopTimeCycle = System.currentTimeMillis();
-                    long elapsedTime = stopTimeCycle - startTimeCycle;
-                    System.out.println("====== processed " + (recNoA + recNoB) + " records in " + (elapsedTime / 1000) + " seconds.");
-                    System.out.println("====== identified " + e.matchingPairsNo + " matching pairs.");
-                    startTimeCycle = System.currentTimeMillis();
+                if (fileBHasNext) {
+                    lineInArray2 = readerB.readNext();
+                    if (lineInArray2 != null) {
+                        if (lineInArray2.length >= 6) {
+                            recNoB++;
+                            Record rec2 = prepare(lineInArray2);
+                            e.put(rec2);
+                        }
+                    } else {
+                        fileBHasNext = false;
+                    }
                 }
-                if ((lineInArray1 == null) && (lineInArray2 == null)) {
-                    break;
+
+                if ((recNoA + recNoB) % 10000 == 0 && (recNoA + recNoB) > 0) {
+                     System.out.println("====== Processed " + (recNoA + recNoB) + " records. Identified " + e.matchingPairsNo + " matching pairs.");
                 }
             }
-            long stopTime = System.currentTimeMillis();
-            long elapsedTime = stopTime - startTime;
-            e.writer.close();
-            System.out.println(" ==================== elapsed time " + (elapsedTime / 1000) + " seconds.");
-            System.out.println(" ==================== processed " + (recNoA + recNoB) + " records in total.");
-            System.out.println(" ==================== processed " + (recNoA) + " records from A.");
-            System.out.println(" ==================== processed " + (recNoB) + " records from B.");
-            System.out.println(" ==================== identified " + e.matchingPairsNo + " in total. Recall = " + (e.matchingPairsNo * 1.0 / e.trulyMatchingPairsNo));
-        } catch (Exception ex) {
+        } catch (IOException | CsvValidationException ex) {
             ex.printStackTrace();
+        } finally {
             try {
-                e.writer.close();
-            } catch (Exception ex2) {
+                if (writer != null) writer.close();
+            } catch (IOException ex2) {
                 ex2.printStackTrace();
             }
-
         }
-    }
 
+        long stopTime = System.currentTimeMillis();
+        long elapsedTime = stopTime - startTime;
+        System.out.println("\n==================== FINAL RESULTS ====================");
+        System.out.println("Elapsed time: " + (elapsedTime / 1000.0) + " seconds.");
+        System.out.println("Processed " + (recNoA + recNoB) + " records in total.");
+        System.out.println("Processed " + recNoA + " records from A.");
+        System.out.println("Processed " + recNoB + " records from B.");
+        System.out.println("Identified " + e.matchingPairsNo + " matching pairs in total. Recall = " + (e.matchingPairsNo * 1.0 / e.trulyMatchingPairsNo));
+        System.out.println("======================================================");
+    }
 }
