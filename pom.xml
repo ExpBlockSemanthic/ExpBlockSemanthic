@@ -78,7 +78,7 @@
                         <configuration>
                             <archive>
                                 <manifest>
-                                    <mainClass>gr.edu.ihu.expblock.ExpBlock</mainClass>
+                                    <mainClass>gr.edu.ihu.expblock.NomeSimilaridade</mainClass>
                                 </manifest>
                             </archive>
                             <descriptorRefs>

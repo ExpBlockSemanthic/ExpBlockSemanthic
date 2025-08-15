@@ -17,7 +17,7 @@ public class NomeSimilaridade {
 
     public static void main(String[] args) throws Exception {
         // Carrega o modelo apenas uma vez
-        File modelo = new File("C:\\Users\\Pichau\\Desktop\\Elife\\Elife\\ProjetoBD\\GoogleNews-vectors-negative300.bin");
+        File modelo = new File("C:\\Users\\danie\\OneDrive\\Documentos\\ExpBlockSemanthic\\GoogleNews-vectors-negative300.bin");
         System.out.println("Carregando modelo pré-treinado...");
         vec = WordVectorSerializer.readWord2VecModel(modelo);
         System.out.println("Modelo carregado!");
