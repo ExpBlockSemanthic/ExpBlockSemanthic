@@ -33,37 +33,50 @@ public class SimilarityService {
     }
     
     public static double getCombinedSimilarity(String str1, String str2) {
+        return getCombinedSimilarity(str1, str2, 0.6, 0.4); 
+    }
+
+    /**
+     * Calculates a weighted similarity score between two strings.
+     * @param str1 The first string.
+     * @param str2 The second string.
+     * @param semanticWeight The weight for the semantic (Word2Vec) score.
+     * @param syntacticWeight The weight for the combined syntactic (Levenshtein + Char) score.
+     * @return The final weighted similarity score.
+     */
+    public static double getCombinedSimilarity(String str1, String str2, double semanticWeight, double syntacticWeight) {
         if (!isInitialized || vec == null) {
             return (calcularLevenshteinComposto(str1, str2) + calcularCharEmbeddingSimilarity(str1, str2)) / 2.0;
         }
 
         Map<String, Double> scores = calcularSimilaridades(str1, str2);
         
-        double semanticaScore = scores.getOrDefault("Semântica (Word2Vec)", 0.0);
+        double semanticScore = scores.getOrDefault("Semântica (Word2Vec)", 0.0);
+        
         double levenshteinScore = scores.getOrDefault("Levenshtein", 0.0);
+        double charEmbeddingScore = scores.getOrDefault("CharEmbedding", 0.0);
+        double syntacticScore = (levenshteinScore + charEmbeddingScore) / 2.0;
 
-        if (semanticaScore > 0.85) {
-            return semanticaScore;
+        if (semanticScore > 0.85) {
+            return semanticScore;
         }
         
-        return (semanticaScore * 0.5) + (levenshteinScore * 0.5);
+        return (semanticScore * semanticWeight) + (syntacticScore * syntacticWeight);
     }
 
     private static Map<String, Double> calcularSimilaridades(String nome1, String nome2) {
         Map<String, Double> resultado = new LinkedHashMap<>();
         
-        String nome1Limpo = limparTexto(nome1);
-        String nome2Limpo = limparTexto(nome2);
-
-        // Word2Vec
         if (vec != null) {
+            String nome1Limpo = limparTexto(nome1).replace(" ", "_"); 
+            String nome2Limpo = limparTexto(nome2).replace(" ", "_");
             String nome1Corrigido = corrigirSeNecessario(nome1Limpo);
             String nome2Corrigido = corrigirSeNecessario(nome2Limpo);
             if (nome1Corrigido != null && nome2Corrigido != null) {
-                 double similaridadeSemantica = vec.similarity(nome1Corrigido, nome2Corrigido);
-                 resultado.put("Semântica (Word2Vec)", Math.max(0, similaridadeSemantica)); 
+                double similaridadeSemantica = vec.similarity(nome1Corrigido, nome2Corrigido);
+                resultado.put("Semântica (Word2Vec)", Math.max(0, similaridadeSemantica)); 
             } else {
-                 resultado.put("Semântica (Word2Vec)", 0.0);
+                resultado.put("Semântica (Word2Vec)", 0.0);
             }
         }
         
@@ -78,7 +91,6 @@ public class SimilarityService {
         if (vec.hasWord(palavra)) {
             return palavra;
         }
-        
         return null; 
     }
 
@@ -86,7 +98,8 @@ public class SimilarityService {
         if (texto == null) return "";
         String normalizado = Normalizer.normalize(texto.toLowerCase(), Normalizer.Form.NFD);
         normalizado = normalizado.replaceAll("[^\\p{ASCII}]", "");
-        normalizado = normalizado.replaceAll("[^a-z]", ""); // Apenas letras
+        normalizado = normalizado.replaceAll("[^a-z\\s]", "");
+        normalizado = normalizado.replaceAll("\\s+", " ");
         return normalizado.trim();
     }
 
