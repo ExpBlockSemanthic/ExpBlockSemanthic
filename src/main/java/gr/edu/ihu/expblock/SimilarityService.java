@@ -45,16 +45,20 @@ public class SimilarityService {
      * @return The final weighted similarity score.
      */
     public static double getCombinedSimilarity(String str1, String str2, double semanticWeight, double syntacticWeight) {
+        System.out.println("Calculating combined similarity for: " + str1 + " and " + str2 + " with weights - Semantic: " + semanticWeight + ", Syntactic: " + syntacticWeight);
         if (!isInitialized || vec == null) {
             return (calcularLevenshteinComposto(str1, str2) + calcularCharEmbeddingSimilarity(str1, str2)) / 2.0;
         }
 
         Map<String, Double> scores = calcularSimilaridades(str1, str2);
+        System.out.println("Scores: " + scores);
         
         double semanticScore = scores.getOrDefault("Semântica (Word2Vec)", 0.0);
-        
+        System.out.println("Semantic Score: " + semanticScore);
         double levenshteinScore = scores.getOrDefault("Levenshtein", 0.0);
+        System.out.println("Levenshtein Score: " + levenshteinScore);
         double charEmbeddingScore = scores.getOrDefault("CharEmbedding", 0.0);
+        System.out.println("Char Embedding Score: " + charEmbeddingScore);
         double syntacticScore = (levenshteinScore + charEmbeddingScore) / 2.0;
 
         if (semanticScore > 0.85) {
