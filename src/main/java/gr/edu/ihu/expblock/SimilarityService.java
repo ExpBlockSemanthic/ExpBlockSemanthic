@@ -3,6 +3,9 @@ package gr.edu.ihu.expblock;
 
 import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
 import org.deeplearning4j.models.word2vec.Word2Vec;
+
+import gr.edu.ihu.expblock.ExpBlock.ExperimentConfig;
+
 import org.apache.commons.codec.language.Soundex;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 
@@ -15,6 +18,14 @@ public class SimilarityService {
     private static Word2Vec vec;
     private static final Soundex soundex = new Soundex();
     private static boolean isInitialized = false;
+
+    // Classe de retorno para agrupar os resultados
+    public static class SimilarityScores {
+        public double semanticScore;
+        public double levenshteinScore;
+        public double soundexScore;
+        public double charEmbeddingScore;
+    }
 
     public static void initialize(String modelPath) {
         if (isInitialized) {
@@ -31,67 +42,51 @@ public class SimilarityService {
             vec = null;
         }
     }
-    
-    public static double getCombinedSimilarity(String str1, String str2) {
-        return getCombinedSimilarity(str1, str2, 0.6, 0.4); 
-    }
 
     /**
-     * Calculates a weighted similarity score between two strings.
+     * Calculates and returns a collection of similarity scores between two strings.
      * @param str1 The first string.
      * @param str2 The second string.
-     * @param semanticWeight The weight for the semantic (Word2Vec) score.
-     * @param syntacticWeight The weight for the combined syntactic (Levenshtein + Char) score.
-     * @return The final weighted similarity score.
+     * @return A SimilarityScores object containing the scores for each metric.
      */
-    public static double getCombinedSimilarity(String str1, String str2, double semanticWeight, double syntacticWeight) {
-        if (!isInitialized || vec == null) {
-            return (calcularLevenshteinComposto(str1, str2) + calcularCharEmbeddingSimilarity(str1, str2)) / 2.0;
-        }
-
-        Map<String, Double> scores = calcularSimilaridades(str1, str2);
-        
-        double semanticScore = scores.getOrDefault("Semântica (Word2Vec)", 0.0);
-        
-        double levenshteinScore = scores.getOrDefault("Levenshtein", 0.0);
-        double charEmbeddingScore = scores.getOrDefault("CharEmbedding", 0.0);
-        double syntacticScore = (levenshteinScore + charEmbeddingScore) / 2.0;
-
-        if (semanticScore > 0.85) {
-            return semanticScore;
-        }
-        
-        return (semanticScore * semanticWeight) + (syntacticScore * syntacticWeight);
-    }
-
-    private static Map<String, Double> calcularSimilaridades(String nome1, String nome2) {
-        Map<String, Double> resultado = new LinkedHashMap<>();
-        
-        if (vec != null) {
-            String nome1Limpo = limparTexto(nome1).replace(" ", "_"); 
-            String nome2Limpo = limparTexto(nome2).replace(" ", "_");
-            String nome1Corrigido = corrigirSeNecessario(nome1Limpo);
-            String nome2Corrigido = corrigirSeNecessario(nome2Limpo);
-            if (nome1Corrigido != null && nome2Corrigido != null) {
-                double similaridadeSemantica = vec.similarity(nome1Corrigido, nome2Corrigido);
-                resultado.put("Semântica (Word2Vec)", Math.max(0, similaridadeSemantica)); 
+    public static SimilarityScores getScores(String str1, String str2, ExperimentConfig config) {
+        SimilarityScores scores = new SimilarityScores();
+    
+        // Verificação condicional para pular a similaridade semântica
+        if (config.semanticSimilarityWeight > 0.0) {
+            if (isInitialized && vec != null) {
+                String str1Limpo = limparTexto(str1).replace(" ", "_");
+                String str2Limpo = limparTexto(str2).replace(" ", "_");
+                String str1Corrigido = corrigirSeNecessario(str1Limpo);
+                String str2Corrigido = corrigirSeNecessario(str2Limpo);
+                if (str1Corrigido != null && str2Corrigido != null) {
+                    scores.semanticScore = Math.max(0, vec.similarity(str1Corrigido, str2Corrigido));
+                } else {
+                    scores.semanticScore = 0.0;
+                }
             } else {
-                resultado.put("Semântica (Word2Vec)", 0.0);
+                scores.semanticScore = 0.0;
             }
+        } else {
+            // Se o peso é 0, o score semântico também será 0, e o cálculo é ignorado.
+            scores.semanticScore = 0.0;
         }
-        
-        resultado.put("Levenshtein", calcularLevenshteinComposto(nome1, nome2));
-        resultado.put("Fonética (Soundex)", calcularSoundexSimilarity(nome1, nome2));
-        resultado.put("CharEmbedding", calcularCharEmbeddingSimilarity(nome1, nome2));
 
-        return resultado;
+        // Similaridades Sintáticas
+        scores.levenshteinScore = calcularLevenshteinComposto(str1, str2);
+        scores.soundexScore = calcularSoundexSimilarity(str1, str2);
+        scores.charEmbeddingScore = calcularCharEmbeddingSimilarity(str1, str2);
+
+        return scores;
     }
+
+    // O método 'getCombinedSimilarity' não é mais necessário, pois a combinação será feita no Block.java
 
     private static String corrigirSeNecessario(String palavra) {
         if (vec.hasWord(palavra)) {
             return palavra;
         }
-        return null; 
+        return null;
     }
 
     private static String limparTexto(String texto) {

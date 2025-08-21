@@ -1,0 +1,21 @@
+==================== RESULTADOS - CONFIG 6, EXEC 3 ====================
+Configurações: 
+Levenshtein Weight: 0.0
+ Char Embedding Weight: 1.0
+ Soundex Weight: 0.0
+ Surname Weight: 0.5
+ Name Weight: 0.5
+ Semantic Similarity Weight: 0.0
+ Syntactic Similarity Weight: 1.0
+ Similarity Threshold: 0.4
+ Name Similarity Threshold: 0.8
+ Surname Similarity Threshold: 0.8
+
+Tempo de execução: 460.386 segundos.
+Total de registros processados: 2000000
+Total de pares correspondentes: 795358
+Total de falsos positivos: 6862070
+Total de pares identificados: 7657428
+Precisão = 0.10386751269486308
+Abrangência (Recall) = 0.795358
+======================================================
