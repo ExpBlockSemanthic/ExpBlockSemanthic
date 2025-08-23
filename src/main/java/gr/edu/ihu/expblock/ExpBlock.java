@@ -12,8 +12,10 @@ import java.util.List;
 import java.util.SplittableRandom;
 import java.util.stream.IntStream;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.codec.language.Soundex;
 
 public class ExpBlock {
+    private static final Soundex soundex = new Soundex();
 
     public double epsilon;
     public double delta = 0.1;
@@ -61,7 +63,7 @@ public class ExpBlock {
         if (this.occupied == b) {
             int avg = this.globalRecNo / b;
             if (avg == 0) avg = 1;
-
+    
             int v = 0;
             int j = 0;
             int i = r[j];
@@ -87,15 +89,29 @@ public class ExpBlock {
             this.occupied = this.occupied - ((int) Math.floor((xi * b)));
             currentRound++;
         }
+    
         this.globalRecNo++;
         String key = rec.getBlockingKey(minHash);
-
+    
         boolean blockExists = false;
         int emptyPos = -1;
+    
         for (int i = 0; i < arr.length; i++) {
             Block block = arr[i];
             if (block != null) {
-                if (block.key.equals(key)) {
+                double exactMatchScore = block.key.equals(key) ? 1.0 : 0.0;
+                double finalScore = exactMatchScore;
+    
+                // Só calcula o Soundex se o peso dele for > 0
+                if (currentConfig.soundexWeight > 0.0) {
+                    double soundexScore = computeSoundexSimilarity(block.key, key);
+    
+                    // Combinação ponderada
+                    finalScore = (1 - currentConfig.soundexWeight) * exactMatchScore
+                               + currentConfig.soundexWeight * soundexScore;
+                }
+    
+                if (finalScore >= currentConfig.similarityThreshold) {
                     Block.PutResult result = block.put(rec, w, currentRound, writer);
                     this.matchingPairsNo += result.truePositives;
                     this.falsePositivesNo += result.falsePositives;
@@ -106,8 +122,8 @@ public class ExpBlock {
                 emptyPos = i;
             }
         }
+    
         if (!blockExists) {
-            // AQUI É A PARTE CRÍTICA: PASSE A CONFIGURAÇÃO PARA O CONSTRUTOR DO NOVO BLOCK
             Block newBlock = new Block(key, this.q, this.currentConfig);
             this.occupied++;
             Block.PutResult result = newBlock.put(rec, w, currentRound, writer);
@@ -125,6 +141,25 @@ public class ExpBlock {
             this.falsePositivesNo += result.falsePositives;
         }
     }
+    
+    
+    // ================= FUNÇÃO AUXILIAR =================
+    private double computeSoundexSimilarity(String s1, String s2) {
+    try {
+        String code1 = soundex.encode(s1); // usa o static final já declarado
+        String code2 = soundex.encode(s2);
+
+        if (code1.equals(code2)) {
+            return 1.0;
+        } else {
+            int diff = soundex.difference(s1, s2);
+            return diff / 4.0;
+        }
+    } catch (Exception e) {
+        return 0.0;
+    }
+}
+    
 
     public static Record prepare(String[] lineInArray) {
         String surname = lineInArray[1];
@@ -171,23 +206,32 @@ public class ExpBlock {
     public static void main(String[] args) {
         // ================== CONFIGURAÇÕES DOS EXPERIMENTOS ==================
         List<ExperimentConfig> configs = new ArrayList<>();
-        
         //configs.add(new ExperimentConfig(1.0, 0.0, 0.0, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 1
-        //configs.add(new ExperimentConfig(0.7, 0.15, 0.15, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 2
-        //configs.add(new ExperimentConfig(0.34, 0.33, 0.33, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 3
-        //configs.add(new ExperimentConfig(0.0, 0.5, 0.5, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 4
-        //configs.add(new ExperimentConfig(0.0, 0.7, 0.3, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 5
-        //configs.add(new ExperimentConfig(0.0, 1.0, 0.0, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 6
-        //configs.add(new ExperimentConfig(0.0, 0.3, 0.7, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 7
-        //configs.add(new ExperimentConfig(0.0, 0.0, 1.0, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 8
+        
+        //configs.add(new ExperimentConfig(1.0, 0.0, 0.0, 0.5, 0.5, 0.0, 1.0, 0.6, 0.8, 0.8)); // Config 2
+        //configs.add(new ExperimentConfig(1.0, 0.0, 0.0, 0.5, 0.5, 0.0, 1.0, 0.8, 0.8, 0.8)); // Config 3
+        
 
-        //configs.add(new ExperimentConfig(0.34, 0.33, 0.33, 0.5, 0.5, 0.3, 0.7, 0.4, 0.8, 0.8)); // Config 9
-        //configs.add(new ExperimentConfig(0.34, 0.33, 0.33, 0.5, 0.5, 0.5, 0.5, 0.4, 0.8, 0.8)); // Config 10
+        //configs.add(new ExperimentConfig(0.7, 0.3, 0.0, 0.5, 0.5, 0.0, 1.0, 0.8, 0.8, 0.8)); // Config 4
+        //configs.add(new ExperimentConfig(0.5, 0.5, 0.0, 0.5, 0.5, 0.0, 1.0, 0.8, 0.8, 0.8)); // Config 5
+        //configs.add(new ExperimentConfig(0.0, 1.0, 0.0, 0.5, 0.5, 0.0, 1.0, 0.8, 0.8, 0.8)); // Config 6
+        //configs.add(new ExperimentConfig(0.3, 0.7, 0.0, 0.5, 0.5, 0.0, 1.0, 0.8, 0.8, 0.8)); // Config 7
+
+        configs.add(new ExperimentConfig(0.7, 0.3, 0.0, 0.5, 0.5, 0.3, 0.7, 0.8, 0.8, 0.8)); // Config 8
+        configs.add(new ExperimentConfig(0.7, 0.3, 0.0, 0.5, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8)); // Config 9
+        configs.add(new ExperimentConfig(0.7, 0.3, 0.0, 0.5, 0.5, 0.7, 0.3, 0.8, 0.8, 0.8)); // Config 10
+        configs.add(new ExperimentConfig(0.7, 0.3, 0.0, 0.5, 0.5, 1.0, 0.0, 0.8, 0.8, 0.8)); // Config 11
+        //configs.add(new ExperimentConfig(0.0, 0.7, 0.0, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 5
+        //configs.add(new ExperimentConfig(0.0, 1.0, 0.0, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 6
+        //configs.add(new ExperimentConfig(0.0, 0.3, 0.0, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 7
+        //configs.add(new ExperimentConfig(0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 8
+
+        //configs.add(new ExperimentConfig(0.5, 0.5, 0.0, 0.5, 0.5, 0.3, 0.7, 0.8, 0.8, 0.8)); // Config 9
+        //configs.add(new ExperimentConfig(0.5, 0.5, 0.0, 0.5, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8)); // Config 10        
+        //configs.add(new ExperimentConfig(0.5, 0.5, 0.0,0.5, 0.5, 0.7, 0.3, 0.8, 0.8, 0.8)); // Config 11
+        //configs.add(new ExperimentConfig(0.5, 0.5, 0.0, 0.5, 0.5, 1.0, 0.0, 0.8, 0.8, 0.8)); // Config 12
         
-        configs.add(new ExperimentConfig(0.34, 0.33, 0.33,0.5, 0.5, 0.7, 0.3, 0.4, 0.8, 0.8)); // Config 11
-        configs.add(new ExperimentConfig(0.34, 0.33, 0.33, 0.5, 0.5, 1.0, 0.0, 0.4, 0.8, 0.8)); // Config 12
-        
-        String word2VecModelPath = "GoogleNews-vectors-negative300.bin";
+        String word2VecModelPath = "wiki-news-300d-1M.vec";
         SimilarityService.initialize(word2VecModelPath);
 
         // ================== LOOP PARA EXECUTAR CADA EXPERIMENTO 10x ==================
@@ -255,40 +299,40 @@ public class ExpBlock {
                 String outputFileName = "results_config_" + (i + 1) + "_exec_" + (j + 1) + ".txt";
 
                 try (FileWriter outputWriter = new FileWriter(outputFileName)) {
-                    // Escreva o cabeçalho no arquivo.
-                    outputWriter.write("==================== RESULTADOS - CONFIG " + (i + 1) + ", EXEC " + (j + 1) + " ====================\r\n");
-
-                    // Escreva as configurações aplicadas
-                    outputWriter.write("Configurações: \r\n");
-                    outputWriter.write("  Levenshtein Weight: " + currentConfig.levenshteinWeight + "\r\n");
-                    outputWriter.write("  Char Embedding Weight: " + currentConfig.charEmbeddingWeight + "\r\n");
-                    outputWriter.write("  Soundex Weight: " + currentConfig.soundexWeight + "\r\n");
-                    outputWriter.write("  Surname Weight: " + currentConfig.surnameWeight + "\r\n");
-                    outputWriter.write("  Name Weight: " + currentConfig.nameWeight + "\r\n");
-                    outputWriter.write("  Semantic Similarity Weight: " + currentConfig.semanticSimilarityWeight + "\r\n");
-                    outputWriter.write("  Syntactic Similarity Weight: " + currentConfig.syntacticSimilarityWeight + "\r\n");
-                    outputWriter.write("  Similarity Threshold: " + currentConfig.similarityThreshold + "\r\n");
-                    outputWriter.write("  Name Similarity Threshold: " + currentConfig.nameSimilarityThreshold + "\r\n");
-                    outputWriter.write("  Surname Similarity Threshold: " + currentConfig.surnameSimilarityThreshold + "\r\n");
-                    outputWriter.write("\r\n");
-
-                    // Escreva os resultados do experimento.
-                    outputWriter.write("Tempo de execução: " + (elapsedTime / 1000.0) + " segundos.\r\n");
-                    outputWriter.write("Total de registros processados: " + (recNoA + recNoB) + "\r\n");
-                    outputWriter.write("Total de pares correspondentes: " + e.matchingPairsNo + "\r\n");
-                    outputWriter.write("Total de falsos positivos: " + e.falsePositivesNo + "\r\n");
-                    outputWriter.write("Total de pares identificados: " + (e.matchingPairsNo + e.falsePositivesNo) + "\r\n");
-
                     double precision = 0.0;
                     if ((e.matchingPairsNo + e.falsePositivesNo) > 0) {
                         precision = (double) e.matchingPairsNo / (e.matchingPairsNo + e.falsePositivesNo);
                     }
                     double recall = (double) e.matchingPairsNo / e.trulyMatchingPairsNo;
-
-                    outputWriter.write("Precisão = " + precision + "\r\n");
-                    outputWriter.write("Abrangência (Recall) = " + recall + "\r\n");
-                    outputWriter.write("======================================================\r\n");
-
+                
+                    String json = "{\n" +
+                            "  \"configIndex\": " + (i + 1) + ",\n" +
+                            "  \"executionIndex\": " + (j + 1) + ",\n" +
+                            "  \"configurations\": {\n" +
+                            "    \"levenshteinWeight\": " + currentConfig.levenshteinWeight + ",\n" +
+                            "    \"charEmbeddingWeight\": " + currentConfig.charEmbeddingWeight + ",\n" +
+                            "    \"soundexWeight\": " + currentConfig.soundexWeight + ",\n" +
+                            "    \"surnameWeight\": " + currentConfig.surnameWeight + ",\n" +
+                            "    \"nameWeight\": " + currentConfig.nameWeight + ",\n" +
+                            "    \"semanticSimilarityWeight\": " + currentConfig.semanticSimilarityWeight + ",\n" +
+                            "    \"syntacticSimilarityWeight\": " + currentConfig.syntacticSimilarityWeight + ",\n" +
+                            "    \"similarityThreshold\": " + currentConfig.similarityThreshold + ",\n" +
+                            "    \"nameSimilarityThreshold\": " + currentConfig.nameSimilarityThreshold + ",\n" +
+                            "    \"surnameSimilarityThreshold\": " + currentConfig.surnameSimilarityThreshold + "\n" +
+                            "  },\n" +
+                            "  \"results\": {\n" +
+                            "    \"elapsedTimeSeconds\": " + (elapsedTime / 1000.0) + ",\n" +
+                            "    \"totalRecordsProcessed\": " + (recNoA + recNoB) + ",\n" +
+                            "    \"matchingPairsNo\": " + e.matchingPairsNo + ",\n" +
+                            "    \"falsePositivesNo\": " + e.falsePositivesNo + ",\n" +
+                            "    \"totalPairsIdentified\": " + (e.matchingPairsNo + e.falsePositivesNo) + ",\n" +
+                            "    \"precision\": " + precision + ",\n" +
+                            "    \"recall\": " + recall + "\n" +
+                            "  }\n" +
+                            "}";
+                
+                    outputWriter.write(json);
+                
                     System.out.println("Resultados da Configuração " + (i + 1) + ", Execução " + (j + 1) + " salvos em " + outputFileName);
                 } catch (IOException ex) {
                     ex.printStackTrace();

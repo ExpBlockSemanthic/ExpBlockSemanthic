@@ -1,0 +1,25 @@
+{
+  "configIndex": 2,
+  "executionIndex": 2,
+  "configurations": {
+    "levenshteinWeight": 0.7,
+    "charEmbeddingWeight": 0.3,
+    "soundexWeight": 0.0,
+    "surnameWeight": 0.5,
+    "nameWeight": 0.5,
+    "semanticSimilarityWeight": 0.5,
+    "syntacticSimilarityWeight": 0.5,
+    "similarityThreshold": 0.8,
+    "nameSimilarityThreshold": 0.8,
+    "surnameSimilarityThreshold": 0.8
+  },
+  "results": {
+    "elapsedTimeSeconds": -2545.202,
+    "totalRecordsProcessed": 2000000,
+    "matchingPairsNo": 135081,
+    "falsePositivesNo": 18109,
+    "totalPairsIdentified": 153190,
+    "precision": 0.8817873229323063,
+    "recall": 0.135081
+  }
+}
