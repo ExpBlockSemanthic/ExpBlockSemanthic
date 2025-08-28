@@ -101,15 +101,7 @@ public class ExpBlock {
             if (block != null) {
                 double exactMatchScore = block.key.equals(key) ? 1.0 : 0.0;
                 double finalScore = exactMatchScore;
-    
-                // Só calcula o Soundex se o peso dele for > 0
-                if (currentConfig.soundexWeight > 0.0) {
-                    double soundexScore = computeSoundexSimilarity(block.key, key);
-    
-                    // Combinação ponderada
-                    finalScore = (1 - currentConfig.soundexWeight) * exactMatchScore
-                               + currentConfig.soundexWeight * soundexScore;
-                }
+            
     
                 if (finalScore >= currentConfig.similarityThreshold) {
                     Block.PutResult result = block.put(rec, w, currentRound, writer);
@@ -140,26 +132,7 @@ public class ExpBlock {
             this.matchingPairsNo += result.truePositives;
             this.falsePositivesNo += result.falsePositives;
         }
-    }
-    
-    
-    // ================= FUNÇÃO AUXILIAR =================
-    private double computeSoundexSimilarity(String s1, String s2) {
-    try {
-        String code1 = soundex.encode(s1); // usa o static final já declarado
-        String code2 = soundex.encode(s2);
-
-        if (code1.equals(code2)) {
-            return 1.0;
-        } else {
-            int diff = soundex.difference(s1, s2);
-            return diff / 4.0;
-        }
-    } catch (Exception e) {
-        return 0.0;
-    }
-}
-    
+    }    
 
     public static Record prepare(String[] lineInArray) {
         String surname = lineInArray[1];
@@ -218,20 +191,12 @@ public class ExpBlock {
         //configs.add(new ExperimentConfig(0.3, 0.7, 0.0, 0.5, 0.5, 0.0, 1.0, 0.8, 0.8, 0.8)); // Config 7
 
         configs.add(new ExperimentConfig(0.7, 0.3, 0.0, 0.5, 0.5, 0.3, 0.7, 0.8, 0.8, 0.8)); // Config 8
-        configs.add(new ExperimentConfig(0.7, 0.3, 0.0, 0.5, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8)); // Config 9
-        configs.add(new ExperimentConfig(0.7, 0.3, 0.0, 0.5, 0.5, 0.7, 0.3, 0.8, 0.8, 0.8)); // Config 10
-        configs.add(new ExperimentConfig(0.7, 0.3, 0.0, 0.5, 0.5, 1.0, 0.0, 0.8, 0.8, 0.8)); // Config 11
-        //configs.add(new ExperimentConfig(0.0, 0.7, 0.0, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 5
-        //configs.add(new ExperimentConfig(0.0, 1.0, 0.0, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 6
-        //configs.add(new ExperimentConfig(0.0, 0.3, 0.0, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 7
-        //configs.add(new ExperimentConfig(0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 1.0, 0.4, 0.8, 0.8)); // Config 8
-
-        //configs.add(new ExperimentConfig(0.5, 0.5, 0.0, 0.5, 0.5, 0.3, 0.7, 0.8, 0.8, 0.8)); // Config 9
-        //configs.add(new ExperimentConfig(0.5, 0.5, 0.0, 0.5, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8)); // Config 10        
-        //configs.add(new ExperimentConfig(0.5, 0.5, 0.0,0.5, 0.5, 0.7, 0.3, 0.8, 0.8, 0.8)); // Config 11
-        //configs.add(new ExperimentConfig(0.5, 0.5, 0.0, 0.5, 0.5, 1.0, 0.0, 0.8, 0.8, 0.8)); // Config 12
+        //configs.add(new ExperimentConfig(0.7, 0.3, 0.0, 0.5, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8)); // Config 9
+        //configs.add(new ExperimentConfig(0.7, 0.3, 0.0, 0.5, 0.5, 0.7, 0.3, 0.8, 0.8, 0.8)); // Config 10
+        //configs.add(new ExperimentConfig(0.7, 0.3, 0.0, 0.5, 0.5, 1.0, 0.0, 0.8, 0.8, 0.8)); // Config 11
+       
         
-        String word2VecModelPath = "wiki-news-300d-1M.vec";
+        String word2VecModelPath = "GoogleNews-vectors-negative300.bin";
         SimilarityService.initialize(word2VecModelPath);
 
         // ================== LOOP PARA EXECUTAR CADA EXPERIMENTO 10x ==================
